@@ -2,6 +2,7 @@
 import numpy as np
 
 # from NuFit 6.0, http://www.nu-fit.org/?q=node/294
+# with IceCube and Super-Kamiokande atmospheric data
 
 # degrees
 theta12 = 33.68
