@@ -53,3 +53,29 @@ theta13_inv = np.radians(theta13_inv)
 theta13_inv_err = np.radians(theta13_inv_err)
 deltaCP_inv = np.radians(deltaCP_inv)
 deltaCP_inv_err = np.radians(deltaCP_inv_err)
+
+def get_PMNS(theta12, theta23, theta13, deltaCP, alpha1, alpha2):
+
+    rot_23 = np.array([[
+        [1, 0, 0],
+        [0, np.cos(theta23), np.sin(theta23)],
+        [0, -np.sin(theta23), np.cos(theta23)]
+        ]])
+
+    rot_13 = np.array([[
+        [np.cos(theta13), 0, np.sin(theta13)*np.exp(-1j*deltaCP)],
+        [0, 1, 0],
+        [-np.sin(theta13)*np.exp(1j*deltaCP), 0, np.cos(theta13)]
+        ]])
+
+    rot_12 = np.array([[
+        [np.cos(theta12), np.sin(theta12), 0],
+        [-np.sin(theta12), np.cos(theta12), 0],
+        [0, 0, 1]
+        ]])
+    
+    majorana = np.diag([np.exp(1j*alpha1), np.exp(1j*alpha2), 1])
+
+    return (rot_23 @ rot_13 @ rot_12 @ majorana)[0]
+
+
