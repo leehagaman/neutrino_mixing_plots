@@ -3,5 +3,6 @@
 *.svg
 *.jpg
 *.jpeg
+*.gif
 .DS_Store
 __pycache__
