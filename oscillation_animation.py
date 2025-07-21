@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.patches import FancyArrowPatch
 from tqdm import tqdm
 import nufit_params
 
@@ -100,7 +101,7 @@ def create_neutrino_oscillation_animation(n_flavors=3, L_over_E_max=None, save_v
         masses = [0, np.sqrt(delta_m_sq)]
         flavor_names = ['Flavor A', 'Flavor B']
         flavor_colors = ['tab:blue', 'tab:orange']
-        mass_colors = ['orange', 'purple']
+        mass_colors = ['tab:green', 'tab:red']
         flavor_labels = [r'$\nu_a$', r'$\nu_b$']
         prob_labels = [
             '$P(\\nu_b \\to \\nu_a)$',
@@ -137,7 +138,7 @@ def create_neutrino_oscillation_animation(n_flavors=3, L_over_E_max=None, save_v
         masses = [0, np.sqrt(delta_m21_sq), np.sqrt(delta_m31_sq), m4]
         flavor_names = ['Electron', 'Muon', 'Tau', 'Sterile']
         flavor_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
-        mass_colors = ['orange', 'purple', 'brown', 'magenta']
+        mass_colors = ['tab:purple', 'tab:cyan', 'tab:pink', 'tab:olive']
         flavor_labels = [r'$\nu_e$', r'$\nu_\mu$', r'$\nu_\tau$', r'$\nu_s$']
         prob_labels = [
             '$P(\\nu_\\mu \\to \\nu_e)$',
@@ -159,7 +160,7 @@ def create_neutrino_oscillation_animation(n_flavors=3, L_over_E_max=None, save_v
         masses = [0, np.sqrt(delta_m21_sq), np.sqrt(delta_m31_sq)]
         flavor_names = ['Electron', 'Muon', 'Tau']
         flavor_colors = ['tab:blue', 'tab:orange', 'tab:green']
-        mass_colors = ['orange', 'purple', 'brown']
+        mass_colors = ['tab:purple', 'tab:cyan', 'tab:pink']
         flavor_labels = [r'$\nu_e$', r'$\nu_\mu$', r'$\nu_\tau$']
         prob_labels = [
             '$P(\\nu_\\mu \\to \\nu_e)$',
@@ -194,14 +195,21 @@ def create_neutrino_oscillation_animation(n_flavors=3, L_over_E_max=None, save_v
         ax.set_xlim(-1.1, 1.1)
         ax.set_ylim(-1.1, 1.1)
         ax.set_aspect('equal')
-        ax.grid(True, alpha=0.3)
         ax.set_title(f'{name} Neutrino Coefficient', fontsize=12)
-        ax.set_xlabel('Real Part')
-        ax.set_ylabel('Imaginary Part')
+        #ax.set_xlabel('Real Part')
+        #ax.set_ylabel('Imaginary Part')
         
         # Add unit circle for reference with flavor color
         circle = plt.Circle((0, 0), 1, fill=False, color=color, alpha=1, linestyle='--', lw=3)
         ax.add_patch(circle)
+
+        # Remove ticks and grid to match PMNS style
+        ax.set_xticks([])
+        ax.set_yticks([])
+        
+        # Remove subplot borders to match PMNS style
+        for spine in ax.spines.values():
+            spine.set_visible(False)
     
     # Setup probability plot (top right) - will zoom during animation
     osc_prob_ax.set_xlim(0, 100)  # Start with small range, will zoom during animation
@@ -234,7 +242,7 @@ def create_neutrino_oscillation_animation(n_flavors=3, L_over_E_max=None, save_v
     flavor_bar_ax.set_xticks([])
     flavor_bar_ax.set_yticks([])
     
-    # Initialize animation objects
+        # Initialize animation objects
     vectors = []
     prob_points = []
     prob_traces = []
@@ -247,19 +255,24 @@ def create_neutrino_oscillation_animation(n_flavors=3, L_over_E_max=None, save_v
         # Individual mass eigenstate vectors
         vec_set = []
         for j in range(n_flavors):
-            vec, = ax.plot([], [], 'o-', linewidth=2, markersize=6, alpha=0.7, 
-                          label=f'$\\nu_{j+1}$', color=mass_colors[j])
-            vec_set.append(vec)
+            color = mass_colors[j]
+            # We'll create arrows each frame to match PMNS style exactly
+            vec_set.append(None)  # Placeholder for arrow objects
         vectors.append(vec_set)
         
+        # Add dummy plots for legend entries
+        for j in range(n_flavors):
+            color = mass_colors[j]
+            # Create invisible dummy plot for legend
+            ax.plot([], [], color=color, linewidth=3, label=f'$\\nu_{j+1}$')
         ax.legend(loc='upper right', fontsize=8)
         
         # Probability point
-        prob_point, = osc_prob_ax.plot([], [], 'o', markersize=8, color=color)
+        prob_point, = osc_prob_ax.plot([], [], 'o', markersize=8, color=flavor_colors[i])
         prob_points.append(prob_point)
         
         # Probability trace
-        prob_trace, = osc_prob_ax.plot([], [], '-', linewidth=2, color=color, label=prob_labels[i])
+        prob_trace, = osc_prob_ax.plot([], [], '-', linewidth=2, color=flavor_colors[i], label=prob_labels[i])
         prob_traces.append(prob_trace)
     
     osc_prob_ax.legend(loc='upper right')
@@ -356,14 +369,44 @@ def create_neutrino_oscillation_animation(n_flavors=3, L_over_E_max=None, save_v
             
             # Plot individual vectors tip-to-tail
             cumulative_pos = 0
+            ax = vector_axes[flavor_idx]
+            
+            # Clear previous arrows for this flavor
+            if hasattr(animate, f'prev_arrows_{flavor_idx}'):
+                for arrow in getattr(animate, f'prev_arrows_{flavor_idx}'):
+                    if arrow is not None:
+                        arrow.remove()
+            
+            current_arrows = []
             for i in range(n_flavors):
                 start_pos = cumulative_pos
                 end_pos = cumulative_pos + contributions[i]
                 
-                vectors[flavor_idx][i].set_data([start_pos.real, end_pos.real], 
-                                            [start_pos.imag, end_pos.imag])
+                # Create new arrow matching PMNS style exactly
+                if abs(end_pos - start_pos) > 1e-10:  # Only draw if arrow has non-zero length
+                    arrow_color = mass_colors[i]
+                    
+                    # Adjust end position to match PMNS treatment (shorten arrow by 0.1)
+                    arrow_vector = end_pos - start_pos
+                    arrow_magnitude = abs(arrow_vector)
+                    if arrow_magnitude > 0.1:  # Only adjust if arrow is long enough
+                        adjusted_magnitude = arrow_magnitude - 0.1
+                        adjusted_end_pos = start_pos + (arrow_vector / arrow_magnitude) * adjusted_magnitude
+                    else:
+                        adjusted_end_pos = end_pos
+                    
+                    arrow = ax.arrow(start_pos.real, start_pos.imag, 
+                                   (adjusted_end_pos - start_pos).real, (adjusted_end_pos - start_pos).imag,
+                                   head_width=0.08, head_length=0.08, 
+                                   fc=arrow_color, ec=arrow_color, linewidth=3)
+                    current_arrows.append(arrow)
+                else:
+                    current_arrows.append(None)
                 
                 cumulative_pos = end_pos
+            
+            # Store current arrows for next frame cleanup
+            setattr(animate, f'prev_arrows_{flavor_idx}', current_arrows)
             
             # Update probability point
             prob = np.abs(amplitude)**2
@@ -440,8 +483,13 @@ def create_neutrino_oscillation_animation(n_flavors=3, L_over_E_max=None, save_v
         
         # Return all animated objects
         all_objects = []
-        for vec_set in vectors:
-            all_objects.extend(vec_set)
+        # Add current arrows for this frame
+        for flavor_idx in range(n_flavors):
+            if hasattr(animate, f'prev_arrows_{flavor_idx}'):
+                current_arrows = getattr(animate, f'prev_arrows_{flavor_idx}')
+                for arrow in current_arrows:
+                    if arrow is not None:
+                        all_objects.append(arrow)
         all_objects.extend(prob_points)
         all_objects.extend(prob_traces)
         all_objects.extend(flavor_bars)
