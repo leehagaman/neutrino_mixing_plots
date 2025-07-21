@@ -79,3 +79,77 @@ def get_PMNS(theta12, theta23, theta13, deltaCP, alpha1, alpha2):
     return (rot_23 @ rot_13 @ rot_12 @ majorana)[0]
 
 
+
+# ordering by equation 14: https://microboone.fnal.gov/wp-content/uploads/MICROBOONE-NOTE-1132-PUB.pdf
+def get_sterile_PMNS(theta12, theta23, theta13, deltaCP, theta14, theta24, theta34, delta24, delta34):
+
+    rot_23 = np.array([[
+        [1, 0, 0, 0],
+        [0, np.cos(theta23), np.sin(theta23), 0],
+        [0, -np.sin(theta23), np.cos(theta23), 0],
+        [0, 0, 0, 1]
+        ]])
+
+    rot_13 = np.array([[
+        [np.cos(theta13), 0, np.sin(theta13)*np.exp(-1j*deltaCP), 0],
+        [0, 1, 0, 0],
+        [-np.sin(theta13)*np.exp(1j*deltaCP), 0, np.cos(theta13), 0],
+        [0, 0, 0, 1]
+        ]])
+
+    rot_12 = np.array([[
+        [np.cos(theta12), np.sin(theta12), 0, 0],
+        [-np.sin(theta12), np.cos(theta12), 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+        ]])
+    
+    rot_14 = np.array([[
+        [np.cos(theta14), 0, 0, np.sin(theta14)],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [-np.sin(theta14), 0, 0, np.cos(theta14)]
+        ]])
+    
+    rot_24 = np.array([[
+        [1, 0, 0, 0],
+        [0, np.cos(theta24), 0, np.sin(theta24)*np.exp(1j*delta24)],
+        [0, 0, 1, 0],
+        [0, -np.sin(theta24)*np.exp(-1j*delta24), 0, np.cos(theta24)]
+        ]])
+    
+    rot_34 = np.array([[
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, np.cos(theta34), np.sin(theta34)*np.exp(1j*delta34)],
+        [0, 0, -np.sin(theta34)*np.exp(-1j*delta34), np.cos(theta34)]
+        ]])
+    
+    return (rot_34 @ rot_24 @ rot_14 @ rot_23 @ rot_13 @ rot_12)[0]
+
+def get_sterile_prob(alpha, beta, L_over_E, U, m1, m2, m3, m4):
+
+    if "anti" in alpha:
+        sign = -1
+    else:
+        sign = 1
+
+    if "anti" in alpha and not "anti" in beta:
+        return 0
+
+    P = 0
+    if alpha == beta:
+        P = 1
+    for j in range(4):
+        for k in range(4):
+            if not (j > k):
+                continue
+
+            delta_m2_jk = [m1, m2, m3, m4][j]**2 - [m1, m2, m3, m4][k]**2
+
+            # https://www.wolframalpha.com/input?i=GeV+fermi+%2F+%284+hbar+c%29
+            P -= 4 * np.real(np.conj(U[(alpha,j)]) * U[(beta,j)] * U[(alpha,k)] * np.conj(U[(beta,k)])) * np.sin(1.26693268 * delta_m2_jk * L_over_E)**2
+            P += sign * 2 * np.imag(np.conj(U[(alpha,j)]) * U[(beta,j)] * U[(alpha,k)] * np.conj(U[(beta,k)])) * np.sin(2 * 1.26693268 * delta_m2_jk * L_over_E)
+            
+    return P
+
